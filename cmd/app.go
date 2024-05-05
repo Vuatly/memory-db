@@ -21,7 +21,11 @@ func NewApp() (*App, error) {
 
 	analyzer := compute.NewAnalyzer(logger)
 	parser := compute.NewParser(logger)
-	computeEngine := compute.NewCompute(analyzer, parser, logger)
+
+	computeEngine, err := compute.NewCompute(analyzer, parser, logger)
+	if err != nil {
+		return nil, err
+	}
 
 	storageEngine := storage.NewMemoryStorage()
 

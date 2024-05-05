@@ -4,6 +4,8 @@
 package compute
 
 import (
+	"errors"
+
 	"go.uber.org/zap"
 )
 
@@ -21,12 +23,20 @@ type Compute struct {
 	logger   *zap.Logger
 }
 
-func NewCompute(analyzer analyzer, parser parser, logger *zap.Logger) *Compute {
+func NewCompute(analyzer analyzer, parser parser, logger *zap.Logger) (*Compute, error) {
+	if analyzer == nil {
+		return nil, errors.New("analyzer is required")
+	}
+
+	if parser == nil {
+		return nil, errors.New("parser is required")
+	}
+
 	return &Compute{
 		analyzer: analyzer,
 		parser:   parser,
 		logger:   logger,
-	}
+	}, nil
 }
 
 func (c *Compute) HandleQuery(query string) (Query, error) {
