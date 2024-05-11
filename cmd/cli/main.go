@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"memory-db/cmd"
 	"os"
 	"os/signal"
@@ -17,31 +16,67 @@ func main() {
 		panic(err)
 	}
 
-	go signalsHandler()
+	readChan := make(chan string)
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
-	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Println("Database is ready")
+	scanner := newFileScanner(os.Stdin, readChan, app.Logger)
+	go scanner.startScanLoop()
+
 	for {
-		scanner.Scan()
-		if err = scanner.Err(); err != nil {
-			app.Logger.Error("error reading input", zap.Error(err))
-			continue
-		}
+		select {
+		case query := <-readChan:
+			app.Logger.Info(app.Database.HandleQuery(query))
+		case sig := <-signals:
+			scanner.close()
 
-		query := scanner.Text()
-		output := app.Database.HandleQuery(query)
-		fmt.Println(output)
+			close(readChan)
+			close(signals)
+
+			app.Logger.Info("received signal, shutting down...", zap.String("signal", sig.String()))
+			return
+		}
 	}
 }
 
-func signalsHandler() {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
+type fileScanner struct {
+	input    *os.File
+	to       chan<- string
+	isClosed bool
 
-	sig := <-sigs
-	fmt.Printf("received signal: %s. shutting down...", sig)
-	signal.Stop(sigs)
-	close(sigs)
+	logger *zap.Logger
+}
 
-	os.Exit(0)
+func newFileScanner(input *os.File, toChan chan<- string, logger *zap.Logger) *fileScanner {
+	return &fileScanner{
+		input:  input,
+		to:     toChan,
+		logger: logger,
+	}
+}
+
+func (s *fileScanner) startScanLoop() {
+	scanner := bufio.NewScanner(s.input)
+	for {
+		if s.isClosed {
+			return
+		}
+
+		scanner.Scan()
+		if err := scanner.Err(); err != nil {
+			s.logger.Error("error reading input", zap.Error(err))
+			continue
+		}
+
+		s.to <- scanner.Text()
+	}
+}
+
+func (s *fileScanner) close() {
+	s.isClosed = true
+
+	err := s.input.Close()
+	if err != nil {
+		s.logger.Error("error closing input", zap.Error(err))
+	}
 }
