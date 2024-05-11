@@ -16,24 +16,15 @@ func main() {
 		panic(err)
 	}
 
-	readChan := make(chan string)
-	signalsChan := make(chan os.Signal)
-
-	signal.Notify(signalsChan, syscall.SIGINT, syscall.SIGTERM)
-
-	stdScanner := newScanner(os.Stdin, readChan, signalsChan, app.Logger)
+	stdScanner := newScanner(os.Stdin, app.Logger)
 	go stdScanner.run()
 
 	for {
 		select {
-		case query := <-readChan:
+		case query := <-stdScanner.readStringChan():
 			app.Logger.Info(app.Database.HandleQuery(query))
-		case sig := <-signalsChan:
+		case sig := <-stdScanner.readSignalsChan():
 			stdScanner.close()
-
-			close(readChan)
-			close(signalsChan)
-
 			app.Logger.Info("received signal, shutting down...", zap.String("signal", sig.String()))
 			return
 		}
@@ -42,18 +33,21 @@ func main() {
 
 type scanner struct {
 	input    *os.File
-	to       chan<- string
-	signals  chan<- os.Signal
+	to       chan string
+	signals  chan os.Signal
 	isClosed bool
 
 	logger *zap.Logger
 }
 
-func newScanner(input *os.File, toChan chan<- string, signalsChan chan<- os.Signal, logger *zap.Logger) *scanner {
+func newScanner(input *os.File, logger *zap.Logger) *scanner {
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
 	return &scanner{
 		input:   input,
-		to:      toChan,
-		signals: signalsChan,
+		to:      make(chan string),
+		signals: signals,
 		logger:  logger,
 	}
 }
@@ -83,8 +77,18 @@ func (s *scanner) run() {
 	}
 }
 
+func (s *scanner) readStringChan() <-chan string {
+	return s.to
+}
+
+func (s *scanner) readSignalsChan() <-chan os.Signal {
+	return s.signals
+}
+
 func (s *scanner) close() {
 	s.isClosed = true
+	defer close(s.signals)
+	defer close(s.to)
 
 	err := s.input.Close()
 	if err != nil {
