@@ -17,21 +17,22 @@ func main() {
 	}
 
 	readChan := make(chan string)
-	signals := make(chan os.Signal)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	signalsChan := make(chan os.Signal)
 
-	scanner := newFileScanner(os.Stdin, readChan, app.Logger)
-	go scanner.startScanLoop()
+	signal.Notify(signalsChan, syscall.SIGINT, syscall.SIGTERM)
+
+	stdScanner := newScanner(os.Stdin, readChan, signalsChan, app.Logger)
+	go stdScanner.run()
 
 	for {
 		select {
 		case query := <-readChan:
 			app.Logger.Info(app.Database.HandleQuery(query))
-		case sig := <-signals:
-			scanner.close()
+		case sig := <-signalsChan:
+			stdScanner.close()
 
 			close(readChan)
-			close(signals)
+			close(signalsChan)
 
 			app.Logger.Info("received signal, shutting down...", zap.String("signal", sig.String()))
 			return
@@ -39,40 +40,50 @@ func main() {
 	}
 }
 
-type fileScanner struct {
+type scanner struct {
 	input    *os.File
 	to       chan<- string
+	signals  chan<- os.Signal
 	isClosed bool
 
 	logger *zap.Logger
 }
 
-func newFileScanner(input *os.File, toChan chan<- string, logger *zap.Logger) *fileScanner {
-	return &fileScanner{
-		input:  input,
-		to:     toChan,
-		logger: logger,
+func newScanner(input *os.File, toChan chan<- string, signalsChan chan<- os.Signal, logger *zap.Logger) *scanner {
+	return &scanner{
+		input:   input,
+		to:      toChan,
+		signals: signalsChan,
+		logger:  logger,
 	}
 }
 
-func (s *fileScanner) startScanLoop() {
-	scanner := bufio.NewScanner(s.input)
+func (s *scanner) run() {
+	stdScanner := bufio.NewScanner(s.input)
 	for {
 		if s.isClosed {
 			return
 		}
 
-		scanner.Scan()
-		if err := scanner.Err(); err != nil {
+		isScanned := stdScanner.Scan()
+		err := stdScanner.Err()
+
+		if err == nil && !isScanned {
+			s.logger.Info("received EOF, exit...")
+			s.signals <- syscall.SIGQUIT
+			return
+		}
+
+		if err != nil {
 			s.logger.Error("error reading input", zap.Error(err))
 			continue
 		}
 
-		s.to <- scanner.Text()
+		s.to <- stdScanner.Text()
 	}
 }
 
-func (s *fileScanner) close() {
+func (s *scanner) close() {
 	s.isClosed = true
 
 	err := s.input.Close()
