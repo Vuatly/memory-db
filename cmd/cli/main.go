@@ -87,11 +87,13 @@ func (s *scanner) readSignalsChan() <-chan os.Signal {
 
 func (s *scanner) close() {
 	s.isClosed = true
-	defer close(s.signals)
-	defer close(s.to)
 
-	err := s.input.Close()
-	if err != nil {
+	defer func() {
+		close(s.signals)
+		close(s.to)
+	}()
+
+	if err := s.input.Close(); err != nil {
 		s.logger.Error("error closing input", zap.Error(err))
 	}
 }
