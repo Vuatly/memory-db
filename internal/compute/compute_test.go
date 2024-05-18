@@ -82,7 +82,8 @@ func tearUp(t *testing.T) *fixture {
 	analyzerMock := NewAnalyzerMock(t)
 	parserMock := NewParserMock(t)
 
-	compute := NewCompute(analyzerMock, parserMock, zap.NewNop())
+	compute, err := NewCompute(analyzerMock, parserMock, zap.NewNop())
+	require.NoError(t, err)
 
 	return &fixture{
 		compute:  compute,
