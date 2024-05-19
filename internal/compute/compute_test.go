@@ -34,7 +34,7 @@ func TestCompute_HandleQuery(t *testing.T) {
 		fx.parser.EXPECT().ParseQuery("get key&").Return(nil, errors.InvalidSymbolError)
 
 		_, err := fx.compute.HandleQuery("get key&")
-		require.Error(t, err, errors.InvalidSymbolError)
+		require.Equal(t, err, errors.InvalidSymbolError)
 	})
 
 	t.Run("should return err if analyzer fails with zero tokens error", func(t *testing.T) {
@@ -45,7 +45,7 @@ func TestCompute_HandleQuery(t *testing.T) {
 		fx.analyzer.EXPECT().AnalyzeTokens([]string{}).Return(Query{}, errors.ZeroTokensError)
 
 		_, err := fx.compute.HandleQuery("")
-		require.Error(t, err, errors.ZeroTokensError)
+		require.Equal(t, err, errors.ZeroTokensError)
 	})
 
 	t.Run("should return err if analyzer fails with command error", func(t *testing.T) {
@@ -56,7 +56,7 @@ func TestCompute_HandleQuery(t *testing.T) {
 		fx.analyzer.EXPECT().AnalyzeTokens([]string{"get", "key"}).Return(Query{}, errors.InvalidCommandError)
 
 		_, err := fx.compute.HandleQuery("get key")
-		require.Error(t, err, errors.InvalidCommandError)
+		require.Equal(t, err, errors.InvalidCommandError)
 	})
 
 	t.Run("should return err if analyzer fails with invalid arguments", func(t *testing.T) {
@@ -67,7 +67,7 @@ func TestCompute_HandleQuery(t *testing.T) {
 		fx.analyzer.EXPECT().AnalyzeTokens([]string{"get", "key", "value"}).Return(Query{}, errors.InvalidArgumentsNumberError)
 
 		_, err := fx.compute.HandleQuery("get key value")
-		require.Error(t, err, errors.InvalidArgumentsNumberError)
+		require.Equal(t, err, errors.InvalidArgumentsNumberError)
 	})
 }
 
