@@ -1,7 +1,7 @@
 package compute
 
 import (
-	"memory-db/internal/pkg/interror"
+	errors "memory-db/internal/pkg/errors/compute"
 
 	"go.uber.org/zap"
 )
@@ -25,18 +25,18 @@ func NewAnalyzer(logger *zap.Logger) *Analyzer {
 func (a *Analyzer) AnalyzeTokens(tokens []string) (Query, error) {
 	if len(tokens) == 0 {
 		a.logger.Debug("no tokens provided")
-		return Query{}, interror.ZeroTokensError
+		return Query{}, errors.ZeroTokensError
 	}
 
 	command := CommandFromString(tokens[0])
 	if command == InvalidCommand {
 		a.logger.Debug("invalid command", zap.String("command", tokens[0]))
-		return Query{}, interror.InvalidCommandError
+		return Query{}, errors.InvalidCommandError
 	}
 
 	arguments := tokens[1:]
 	if len(arguments) != commandArgumentNumber[command] {
-		return Query{}, interror.InvalidArgumentsNumberError
+		return Query{}, errors.InvalidArgumentsNumberError
 	}
 
 	query := NewQuery(command, arguments)

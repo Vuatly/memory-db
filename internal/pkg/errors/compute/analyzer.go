@@ -1,4 +1,4 @@
-package interror
+package compute
 
 import "errors"
 

@@ -1,7 +1,7 @@
 package compute
 
 import (
-	"memory-db/internal/pkg/interror"
+	errors "memory-db/internal/pkg/errors/compute"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -33,15 +33,15 @@ func TestParser_ParseQuery(t *testing.T) {
 
 		"should fail in initial state if contains invalid symbol": {
 			query: "&",
-			err:   interror.InvalidSymbolError,
+			err:   errors.InvalidSymbolError,
 		},
 		"should fail from whitespace state if contains invalid symbol": {
 			query: "SET %",
-			err:   interror.InvalidSymbolError,
+			err:   errors.InvalidSymbolError,
 		},
 		"should fail from symbol found state if contains invalid symbol": {
 			query: "SET va%",
-			err:   interror.InvalidSymbolError,
+			err:   errors.InvalidSymbolError,
 		},
 	}
 

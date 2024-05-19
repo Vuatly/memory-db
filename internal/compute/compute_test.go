@@ -1,7 +1,7 @@
 package compute
 
 import (
-	"memory-db/internal/pkg/interror"
+	errors "memory-db/internal/pkg/errors/compute"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,10 +31,10 @@ func TestCompute_HandleQuery(t *testing.T) {
 		t.Parallel()
 		fx := tearUp(t)
 
-		fx.parser.EXPECT().ParseQuery("get key&").Return(nil, interror.InvalidSymbolError)
+		fx.parser.EXPECT().ParseQuery("get key&").Return(nil, errors.InvalidSymbolError)
 
 		_, err := fx.compute.HandleQuery("get key&")
-		require.Error(t, err, interror.InvalidSymbolError)
+		require.Error(t, err, errors.InvalidSymbolError)
 	})
 
 	t.Run("should return err if analyzer fails with zero tokens error", func(t *testing.T) {
@@ -42,10 +42,10 @@ func TestCompute_HandleQuery(t *testing.T) {
 		fx := tearUp(t)
 
 		fx.parser.EXPECT().ParseQuery("").Return([]string{}, nil)
-		fx.analyzer.EXPECT().AnalyzeTokens([]string{}).Return(Query{}, interror.ZeroTokensError)
+		fx.analyzer.EXPECT().AnalyzeTokens([]string{}).Return(Query{}, errors.ZeroTokensError)
 
 		_, err := fx.compute.HandleQuery("")
-		require.Error(t, err, interror.ZeroTokensError)
+		require.Error(t, err, errors.ZeroTokensError)
 	})
 
 	t.Run("should return err if analyzer fails with command error", func(t *testing.T) {
@@ -53,10 +53,10 @@ func TestCompute_HandleQuery(t *testing.T) {
 		fx := tearUp(t)
 
 		fx.parser.EXPECT().ParseQuery("get key").Return([]string{"get", "key"}, nil)
-		fx.analyzer.EXPECT().AnalyzeTokens([]string{"get", "key"}).Return(Query{}, interror.InvalidCommandError)
+		fx.analyzer.EXPECT().AnalyzeTokens([]string{"get", "key"}).Return(Query{}, errors.InvalidCommandError)
 
 		_, err := fx.compute.HandleQuery("get key")
-		require.Error(t, err, interror.InvalidCommandError)
+		require.Error(t, err, errors.InvalidCommandError)
 	})
 
 	t.Run("should return err if analyzer fails with invalid arguments", func(t *testing.T) {
@@ -64,10 +64,10 @@ func TestCompute_HandleQuery(t *testing.T) {
 		fx := tearUp(t)
 
 		fx.parser.EXPECT().ParseQuery("get key value").Return([]string{"get", "key", "value"}, nil)
-		fx.analyzer.EXPECT().AnalyzeTokens([]string{"get", "key", "value"}).Return(Query{}, interror.InvalidArgumentsNumberError)
+		fx.analyzer.EXPECT().AnalyzeTokens([]string{"get", "key", "value"}).Return(Query{}, errors.InvalidArgumentsNumberError)
 
 		_, err := fx.compute.HandleQuery("get key value")
-		require.Error(t, err, interror.InvalidArgumentsNumberError)
+		require.Error(t, err, errors.InvalidArgumentsNumberError)
 	})
 }
 
