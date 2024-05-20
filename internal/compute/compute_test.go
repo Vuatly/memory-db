@@ -1,7 +1,7 @@
 package compute
 
 import (
-	errors "memory-db/internal/pkg/errors/compute"
+	errors "memory-db/internal/errors/compute"
 	"testing"
 
 	"github.com/stretchr/testify/require"
