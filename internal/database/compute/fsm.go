@@ -1,7 +1,7 @@
 package compute
 
 import (
-	errors "memory-db/internal/errors/compute"
+	comperrors "memory-db/internal/errors/compute"
 	"strings"
 )
 
@@ -81,7 +81,7 @@ func (f *fsm) parse(query string) ([]string, error) {
 		} else if isWhitespace(r) {
 			f.handleEvent(foundWhitespaceEvent, r)
 		} else {
-			return nil, errors.InvalidSymbolError
+			return nil, comperrors.InvalidSymbolError
 		}
 	}
 
