@@ -96,7 +96,7 @@ func (s *TCPServer) handleConnection(ctx context.Context, conn net.Conn) {
 	request := make([]byte, s.maxMessageSize)
 
 	for {
-		if err := conn.SetReadDeadline(time.Now().Add(s.idleTimeout)); err != nil {
+		if err := conn.SetDeadline(time.Now().Add(s.idleTimeout)); err != nil {
 			s.logger.Error("failed to set read deadline", zap.Error(err))
 		}
 
