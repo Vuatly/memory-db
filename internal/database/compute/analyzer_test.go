@@ -1,7 +1,7 @@
 package compute
 
 import (
-	"memory-db/internal/pkg/interror"
+	comperrors "memory-db/internal/errors/compute"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -40,24 +40,24 @@ func TestAnalyzer_AnalyzeTokens(t *testing.T) {
 
 		"should return err if invalid number of arguments for set": {
 			tokens: []string{"SET", "key"},
-			err:    interror.InvalidArgumentsNumberError,
+			err:    comperrors.InvalidArgumentsNumberError,
 		},
 		"should return err if invalid number of arguments for get": {
 			tokens: []string{"GET", "key", "val"},
-			err:    interror.InvalidArgumentsNumberError,
+			err:    comperrors.InvalidArgumentsNumberError,
 		},
 		"should return err if invalid number of arguments for del": {
 			tokens: []string{"DEL", "key", "val"},
-			err:    interror.InvalidArgumentsNumberError,
+			err:    comperrors.InvalidArgumentsNumberError,
 		},
 
 		"should return err if zero tokens provided": {
 			tokens: []string{},
-			err:    interror.ZeroTokensError,
+			err:    comperrors.ZeroTokensError,
 		},
 		"should return err if invalid command provided": {
 			tokens: []string{"set", "key"},
-			err:    interror.InvalidCommandError,
+			err:    comperrors.InvalidCommandError,
 		},
 	}
 

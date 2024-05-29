@@ -2,98 +2,62 @@ package main
 
 import (
 	"bufio"
-	"memory-db/cmd"
+	"errors"
+	"flag"
+	"fmt"
+	"memory-db/internal/network"
 	"os"
-	"os/signal"
 	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 )
 
 func main() {
-	app, err := cmd.NewApp()
-	if err != nil {
-		panic(err)
+	logger, logErr := zap.NewProduction()
+	if logErr != nil {
+		panic(logErr)
 	}
 
-	stdScanner := newScanner(os.Stdin, app.Logger)
-	go stdScanner.run()
+	address := flag.String("address", "0.0.0.0:5444", "database server address")
+	idleTimeout := flag.Duration("idle_timeout", 15*time.Second, "connection idle timeout")
+	maxMessageSize := flag.Int("max_message_size", 4096, "max message size in bytes")
+	flag.Parse()
+
+	client, tcpErr := network.NewTCPClient(
+		*address,
+		*maxMessageSize,
+		*idleTimeout,
+	)
+	if tcpErr != nil {
+		logger.Error("failed to create client", zap.Error(tcpErr))
+		return
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	logger.Info("connected to server, ready to accept commands")
+	logger.Info("press ctrl (control for mac) + c to exit from command line")
 
 	for {
-		select {
-		case query := <-stdScanner.readStringChan():
-			app.Logger.Info(app.Database.HandleQuery(query))
-		case sig := <-stdScanner.readSignalsChan():
-			stdScanner.close()
-			app.Logger.Info("received signal, shutting down...", zap.String("signal", sig.String()))
-			return
-		}
-	}
-}
-
-type scanner struct {
-	input    *os.File
-	to       chan string
-	signals  chan os.Signal
-	isClosed bool
-
-	logger *zap.Logger
-}
-
-func newScanner(input *os.File, logger *zap.Logger) *scanner {
-	signals := make(chan os.Signal)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-
-	return &scanner{
-		input:   input,
-		to:      make(chan string),
-		signals: signals,
-		logger:  logger,
-	}
-}
-
-func (s *scanner) run() {
-	stdScanner := bufio.NewScanner(s.input)
-	for {
-		if s.isClosed {
-			return
-		}
-
-		isScanned := stdScanner.Scan()
-		err := stdScanner.Err()
-
-		if err == nil && !isScanned {
-			s.logger.Info("received EOF, exit...")
-			s.signals <- syscall.SIGQUIT
-			return
-		}
-
+		fmt.Print("[cli] > ")
+		query, err := reader.ReadString('\n')
 		if err != nil {
-			s.logger.Error("error reading input", zap.Error(err))
-			continue
+			if errors.Is(err, syscall.EPIPE) {
+				logger.Fatal("connection was closed", zap.Error(err))
+			}
+
+			logger.Error("failed to read query", zap.Error(err))
 		}
 
-		s.to <- stdScanner.Text()
-	}
-}
+		response, err := client.Send([]byte(query))
+		if err != nil {
+			if errors.Is(err, syscall.EPIPE) {
+				logger.Fatal("connection was closed", zap.Error(err))
+			}
 
-func (s *scanner) readStringChan() <-chan string {
-	return s.to
-}
+			logger.Error("failed to send query", zap.Error(err))
+		}
 
-func (s *scanner) readSignalsChan() <-chan os.Signal {
-	return s.signals
-}
-
-func (s *scanner) close() {
-	s.isClosed = true
-
-	defer func() {
-		close(s.signals)
-		close(s.to)
-	}()
-
-	if err := s.input.Close(); err != nil {
-		s.logger.Error("error closing input", zap.Error(err))
+		fmt.Println(string(response))
 	}
 }

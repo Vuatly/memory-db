@@ -1,8 +1,8 @@
-package internal
+package database
 
 import (
 	"fmt"
-	"memory-db/internal/compute"
+	"memory-db/internal/database/compute"
 
 	"go.uber.org/zap"
 )
